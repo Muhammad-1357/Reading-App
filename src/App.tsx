@@ -20,7 +20,7 @@ import {
 import { exams, lessons, subjects, type Exam, type Lesson, type Subject } from './content'
 import { supabase } from './lib/supabase'
 
-type Page = 'home' | 'subjects' | 'progress' | 'lesson' | 'quiz'
+type Page = 'home' | 'subjects' | 'progress' | 'plans' | 'lesson' | 'quiz'
 type ProgressEntry = { lesson_id: string; quiz_score: number | null; completed_at: string }
 
 const LOCAL_PROGRESS_KEY = 'open-study-preview-progress'
@@ -166,7 +166,7 @@ export default function App() {
     setPage('subjects')
   }
 
-  function goTo(target: 'home' | 'subjects' | 'progress') {
+  function goTo(target: 'home' | 'subjects' | 'progress' | 'plans') {
     setActiveSubject(null)
     setSearch('')
     setPage(target)
@@ -217,6 +217,7 @@ export default function App() {
           <button className={page === 'home' || page === 'lesson' || page === 'quiz' ? 'active' : ''} onClick={() => goTo('home')}><Grid2X2 size={17} /> Overview</button>
           <button className={page === 'subjects' ? 'active' : ''} onClick={() => goTo('subjects')}><BookOpen size={17} /> Subjects</button>
           <button className={page === 'progress' ? 'active' : ''} onClick={() => goTo('progress')}><Target size={17} /> My progress</button>
+          <button className={page === 'plans' ? 'active' : ''} onClick={() => goTo('plans')}><Sparkles size={17} /> Plans</button>
         </nav>
         <div className="sidebar-bottom">
           <div className="motif-lines" aria-hidden="true"><span /><span /><span /></div>
@@ -234,8 +235,8 @@ export default function App() {
         <header className="topbar">
           <div className="mobile-brand"><span className="brand-mark"><BookOpen size={18} /></span> open<span className="brand-light">study</span></div>
           <label className="exam-mobile-switch"><span className="visually-hidden">Choose exam</span><select value={exam} onChange={(event) => { setExam(event.target.value as Exam); setActiveSubject(null) }}><option value="WAEC">WAEC</option><option value="JAMB">JAMB</option></select><ChevronDown size={12} /></label>
-          <div className="breadcrumb"><span className="desktop-exam-crumb">{exam}</span><span className="crumb-slash">/</span><span>{page === 'lesson' || page === 'quiz' ? currentLesson.subject : page === 'progress' ? 'My progress' : page === 'subjects' ? 'Subjects' : 'Study desk'}</span></div>
-          <div className="topbar-right"><span className="free-badge"><span /> Free to study</span><button className="avatar top-avatar top-avatar-button" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">{(user?.email?.[0] ?? 'S').toUpperCase()}</button></div>
+          <div className="breadcrumb"><span className="desktop-exam-crumb">{exam}</span><span className="crumb-slash">/</span><span>{page === 'lesson' || page === 'quiz' ? currentLesson.subject : page === 'progress' ? 'My progress' : page === 'plans' ? 'Plans' : page === 'subjects' ? 'Subjects' : 'Study desk'}</span></div>
+          <div className="topbar-right"><button className="plans-shortcut" onClick={() => goTo('plans')}><Sparkles size={14} /> Plans</button><button className="avatar top-avatar top-avatar-button" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">{(user?.email?.[0] ?? 'S').toUpperCase()}</button></div>
         </header>
 
         <div className="content-wrap">
@@ -243,6 +244,7 @@ export default function App() {
           {page === 'home' && <HomePage exam={exam} progress={progress} completionPercent={completionPercent} visibleLessons={visibleLessons} resumeLesson={resumeLesson} onOpenLesson={openLesson} onGoSubjects={() => goTo('subjects')} onOpenSubject={openSubject} />}
           {page === 'subjects' && <SubjectsPage exam={exam} subjects={filteredSubjects} lessons={visibleLessons} search={search} setSearch={setSearch} activeSubject={activeSubject} onOpenSubject={openSubject} onOpenLesson={openLesson} onClearSubject={() => setActiveSubject(null)} />}
           {page === 'progress' && <ProgressPage progress={progress} completionPercent={completionPercent} onOpenLesson={openLesson} />}
+          {page === 'plans' && <PlansPage onGoStudy={() => goTo('home')} />}
           {page === 'lesson' && <LessonPage lesson={currentLesson} completed={completedIds.has(currentLesson.id)} saveError={saveError} onBack={() => goTo('home')} onPractice={() => openLesson(currentLesson, 'quiz')} onComplete={() => { void saveProgress(null); goTo('home') }} />}
           {page === 'quiz' && <QuizPage lesson={currentLesson} answers={answers} setAnswers={setAnswers} checked={answersChecked} score={score} saveError={saveError} onBack={() => openLesson(currentLesson)} onCheck={() => setAnswersChecked(true)} onSave={() => { void saveProgress(score); goTo('home') }} />}
         </div>
@@ -332,8 +334,8 @@ function HomePage(props: {
 }
 
 function SubjectTile(props: { subject: Subject; index: number; onClick: () => void }) {
-  const available = lessons.some((lesson) => lesson.subjectId === props.subject.id)
-  return <button className={`subject-tile tone-${props.index % 4}`} onClick={props.onClick}><span className="subject-number">{String(props.index + 1).padStart(2, '0')}</span><span className="subject-name">{props.subject.name}</span><span className="subject-bottom">{available ? 'Study materials ready' : 'Coming soon'} <ArrowRight size={14} /></span></button>
+  const topicCount = lessons.filter((lesson) => lesson.subjectId === props.subject.id).length
+  return <button className={`subject-tile tone-${props.index % 4}`} onClick={props.onClick}><span className="subject-number">{String(props.index + 1).padStart(2, '0')}</span><span className="subject-name">{props.subject.name}</span><span className="subject-bottom">{topicCount ? `${topicCount} lessons ready` : 'Coming soon'} <ArrowRight size={14} /></span></button>
 }
 
 function SubjectsPage(props: {
@@ -375,5 +377,27 @@ function QuizPage(props: { lesson: Lesson; answers: Record<number, number>; setA
 
 function ProgressPage(props: { progress: ProgressEntry[]; completionPercent: number; onOpenLesson: (lesson: Lesson, page?: 'lesson' | 'quiz') => void }) {
   const entries = props.progress.map((entry) => ({ entry, lesson: lessons.find((lesson) => lesson.id === entry.lesson_id) })).filter((item): item is { entry: ProgressEntry; lesson: Lesson } => Boolean(item.lesson))
-  return <section className="progress-page"><div className="page-intro"><div className="eyebrow"><span className="eyebrow-dot" /> YOUR WORK, IN ONE PLACE</div><h1>Look how far<br /><em>you have come.</em></h1><p>Every finished lesson is a step towards exam day.</p></div><div className="progress-overview"><div><span>LESSONS COMPLETED</span><strong>{entries.length.toString().padStart(2, '0')}</strong><small>Keep showing up for yourself.</small></div><div className="progress-ring-wrap"><div className="progress-ring" style={{ background: `conic-gradient(var(--green) ${props.completionPercent * 3.6}deg, #e3e4d9 0deg)` }}><span>{props.completionPercent}%</span></div><small>of starter lessons</small></div></div><div className="catalogue-label"><span>RECENT STUDY</span></div>{entries.length ? <div className="lesson-list">{entries.map(({ entry, lesson }, index) => <article className="lesson-list-row" key={entry.lesson_id}><span className="lesson-list-number"><Check size={15} /></span><div className="lesson-list-info"><span>{lesson.subject} <span className="meta-divider">·</span> {new Date(entry.completed_at).toLocaleDateString()}</span><h3>{lesson.title}</h3><p>{entry.quiz_score === null ? 'Read' : `Practice score: ${entry.quiz_score}/${lesson.questions.length}`}</p></div><button className="round-arrow" aria-label={`Review ${lesson.title}`} onClick={() => props.onOpenLesson(lesson)}><ArrowRight size={17} /></button></article>)}</div> : <div className="empty-progress"><Clock3 size={20} /><h2>Your study story starts here.</h2><p>Read a lesson and mark it complete to see your progress.</p></div>}</section>
+  return <section className="progress-page"><div className="page-intro"><div className="eyebrow"><span className="eyebrow-dot" /> YOUR WORK, IN ONE PLACE</div><h1>Look how far<br /><em>you have come.</em></h1><p>Every finished lesson is a step towards exam day.</p></div><div className="progress-overview"><div><span>LESSONS COMPLETED</span><strong>{entries.length.toString().padStart(2, '0')}</strong><small>Keep showing up for yourself.</small></div><div className="progress-ring-wrap"><div className="progress-ring" style={{ background: `conic-gradient(var(--green) ${props.completionPercent * 3.6}deg, #e3e4d9 0deg)` }}><span>{props.completionPercent}%</span></div><small>of starter lessons</small></div></div><div className="catalogue-label"><span>RECENT STUDY</span></div>{entries.length ? <div className="lesson-list">{entries.map(({ entry, lesson }) => <article className="lesson-list-row" key={entry.lesson_id}><span className="lesson-list-number"><Check size={15} /></span><div className="lesson-list-info"><span>{lesson.subject} <span className="meta-divider">·</span> {new Date(entry.completed_at).toLocaleDateString()}</span><h3>{lesson.title}</h3><p>{entry.quiz_score === null ? 'Read' : `Practice score: ${entry.quiz_score}/${lesson.questions.length}`}</p></div><button className="round-arrow" aria-label={`Review ${lesson.title}`} onClick={() => props.onOpenLesson(lesson)}><ArrowRight size={17} /></button></article>)}</div> : <div className="empty-progress"><Clock3 size={20} /><h2>Your study story starts here.</h2><p>Read a lesson and mark it complete to see your progress.</p></div>}</section>
+}
+
+function PlansPage(props: { onGoStudy: () => void }) {
+  const features = [
+    { label: 'Study library', free: 'Every lesson currently published', premium: 'Complete syllabus pathways as released' },
+    { label: 'Practice', free: 'Questions and explanations on available lessons', premium: 'Timed mock exams and expanded question banks' },
+    { label: 'Progress', free: 'Personal progress saved to your account', premium: 'Study plans and deeper progress insights' },
+    { label: 'Revision', free: 'Available online', premium: 'Downloadable revision packs' },
+  ]
+
+  return <section className="plans-page">
+    <div className="page-intro"><div className="eyebrow"><span className="eyebrow-dot" /> OPEN STUDY ACCESS</div><h1>Study your way.<br /><em>Start for free.</em></h1><p>Core study stays free. Premium is being prepared; no payment is taken today.</p></div>
+    <div className="current-plan"><div><span className="plan-overline">YOUR ACCESS TODAY</span><h2>Free plan</h2><p>Lessons, practice, explanations, and synced progress for every learner.</p></div><span className="plan-active">ACTIVE</span></div>
+    <div className="plan-comparison">
+      <div className="plan-comparison-heading"><span>COMPARE PLANS</span><span>Premium features are planned, not available yet.</span></div>
+      <div className="plan-columns">
+        <section className="plan-column free-plan-column"><div className="plan-tier">FREE <span>AVAILABLE NOW</span></div><h2>₦0</h2><p className="plan-period">No subscription required</p><button className="plan-action current-plan-action" onClick={props.onGoStudy}>Continue studying <ArrowRight size={15} /></button></section>
+        <section className="plan-column premium-plan-column"><div className="plan-tier">PREMIUM <span>IN DEVELOPMENT</span></div><h2>Coming soon</h2><p className="plan-period">Pricing will be announced before launch</p><button className="plan-action premium-plan-action" disabled>Not available yet</button></section>
+      </div>
+      <div className="plan-features">{features.map((feature) => <div className="plan-feature-row" key={feature.label}><strong>{feature.label}</strong><span><Check size={15} /> {feature.free}</span><span className="planned-feature">Planned: {feature.premium}</span></div>)}</div>
+    </div>
+  </section>
 }

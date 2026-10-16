@@ -28,4 +28,6 @@ Keep `.env.local` private. Account sign-in and cloud progress require an interne
 
 ## Content
 
-The current catalogue is a starting point and includes many common WAEC/JAMB options; subject offerings and names can vary by syllabus and year. Mathematics, English, and Biology currently have complete sample lessons. Check future notes and practice sets against the relevant official syllabus and past-paper guidance before relying on them for an exam.
+The current catalogue is a starting point and includes many common WAEC/JAMB options; subject offerings and names can vary by syllabus and year. Mathematics now has 14 original starter lessons covering number, algebra, geometry, graphs, trigonometry, statistics, and probability. This is not a claim of complete WAEC/JAMB syllabus coverage; check future notes and practice sets against the relevant official syllabus and past-paper guidance before relying on them for an exam. English and Biology also have sample lessons.
+
+The Plans page describes current free access and planned Premium features. Premium pricing, subscriptions, and payment processing are not live yet.
